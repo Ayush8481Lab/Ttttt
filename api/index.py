@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import yt_dlp
+import os
 
 app = Flask(__name__)
 
@@ -9,16 +10,26 @@ def get_metadata():
     if not url:
         return jsonify({"error": "Please provide a YouTube URL via the ?url= parameter"}), 400
 
-    # Configure yt-dlp to bypass bot checks WITHOUT authentication
+    # Configure yt-dlp with FIX 1: TV Client & Fake User-Agent
     ydl_opts = {
         'quiet': True,
         'skip_download': True,  # Ensures it executes under 5 seconds
         'extract_flat': False,
-        # THE MAGIC TRICK: Spoof internal Android/iOS clients to bypass web captchas
         'extractor_args': {
-            'youtube': ['client=android,ios,tv']
+            # Bypasses mobile/web checks by acting like a Smart TV
+            'youtube': ['client=tv']
+        },
+        'http_headers': {
+            # Mimic a real Windows Chrome browser instead of a Python script
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
     }
+
+    # Configure yt-dlp with FIX 2: Proxy Support (If needed)
+    # If Vercel's IP is still blocked, add a PROXY_URL environment variable in your Vercel Dashboard
+    proxy_url = os.environ.get('PROXY_URL')
+    if proxy_url:
+        ydl_opts['proxy'] = proxy_url
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -31,7 +42,6 @@ def get_metadata():
                 "title": info.get("title"),
                 "duration": info.get("duration"),
                 "thumbnail": info.get("thumbnail"),
-                # We extract exactly what you need: formats, codecs, and direct URLs
                 "formats":[
                     {
                         "format_id": f.get("format_id"),
