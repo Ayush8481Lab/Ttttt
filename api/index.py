@@ -35,7 +35,7 @@ def get_metadata():
         'skip_download': True,  # Ensures it executes under 5 seconds
         'extract_flat': False,
         'cookiefile': tmp_cookie_path, # Pass the /tmp/ path here!
-        'proxy': 'https://183.87.158.141:8080', 
+'impersonate': 'chrome', 
         'extractor_args': {
             'youtube':['client=tv,android,web']
         },
