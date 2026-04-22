@@ -35,9 +35,8 @@ def get_metadata():
         'skip_download': True,  # Ensures it executes under 5 seconds
         'extract_flat': False,
         'cookiefile': tmp_cookie_path, # Pass the /tmp/ path here!
-'impersonate': 'chrome', 
         'extractor_args': {
-            'youtube':['client=tv,android,web']
+            'youtube':['client=android,ios,Chrome,tv']
         },
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
