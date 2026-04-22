@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import yt_dlp
 import os
+import shutil
 
 app = Flask(__name__)
 
@@ -10,18 +11,30 @@ def get_metadata():
     if not url:
         return jsonify({"error": "Please provide a YouTube URL via the ?url= parameter"}), 400
 
-    # Get the exact folder path where this index.py script is currently running
+    # 1. Get the path to your static cookies.txt inside the read-only deployment directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
+    source_cookie_path = os.path.join(current_dir, 'cookies.txt')
     
-    # Point yt-dlp exactly to the cookies.txt file in the same folder
-    cookie_path = os.path.join(current_dir, 'cookies.txt')
+    # 2. Define a writable path in the serverless /tmp directory
+    tmp_cookie_path = '/tmp/cookies.txt'
+    cookie_status = "Missing"
+    
+    # 3. Copy the cookie file to /tmp/ so yt-dlp can safely read/write/lock it
+    if os.path.exists(source_cookie_path):
+        try:
+            shutil.copy(source_cookie_path, tmp_cookie_path)
+            cookie_status = "Found and Copied to /tmp"
+        except Exception as e:
+            return jsonify({"error": f"Failed to copy cookies to tmp: {str(e)}"}), 500
+    else:
+        tmp_cookie_path = None
 
-    # Configure yt-dlp to USE the static cookies file
+    # Configure yt-dlp to USE the writable temp cookies file
     ydl_opts = {
         'quiet': True,
         'skip_download': True,  # Ensures it executes under 5 seconds
         'extract_flat': False,
-        'cookiefile': cookie_path if os.path.exists(cookie_path) else None,
+        'cookiefile': tmp_cookie_path, # Pass the /tmp/ path here!
         'extractor_args': {
             'youtube':['client=tv,android,web']
         },
@@ -47,7 +60,7 @@ def get_metadata():
                         "ext": f.get("ext"),
                         "vcodec": f.get("vcodec"),
                         "acodec": f.get("acodec"),
-                        "url": f.get("url") # The direct redirect link you want!
+                        "url": f.get("url") # The direct redirect link
                     } 
                     for f in info.get("formats", [])
                     if f.get("url") # Only return streams that have a valid URL
@@ -58,7 +71,7 @@ def get_metadata():
     except Exception as e:
         return jsonify({
             "error": str(e), 
-            "cookie_status": "Found" if os.path.exists(cookie_path) else "Missing"
+            "cookie_status": cookie_status
         }), 500
 
 # Required for Vercel Python runtime
